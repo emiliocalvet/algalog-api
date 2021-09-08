@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 
 import io.github.emiliocalvet.domain.ValidationGroups;
+import io.github.emiliocalvet.domain.exception.NegocioException;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,42 +38,59 @@ public class Entrega {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	
+
 	@Valid
 	@ConvertGroup(from = Default.class, to = ValidationGroups.ClienteId.class)
 	@NotNull
 	@ManyToOne
 	private Cliente cliente;
-	
+
 	@Valid
 	@NotNull
 	@Embedded
 	private Destinatario destinatario;
-	
+
 	@NotNull
 	private BigDecimal taxa;
-	
+
 	@OneToMany(mappedBy = "entrega", cascade = CascadeType.ALL)
 	private List<Ocorrencia> ocorrencias;
-	
+
 	@Enumerated(EnumType.STRING)
 	@JsonProperty(access = Access.READ_ONLY)
 	private StatusEntrega status;
-	
+
 	@JsonProperty(access = Access.READ_ONLY)
 	private OffsetDateTime dataPedido;
-	
+
 	@JsonProperty(access = Access.READ_ONLY)
 	private OffsetDateTime dataFinalizacao;
-	
+
 	public Ocorrencia adicionarOcorrencia(String descricao) {
 		Ocorrencia ocorrencia = new Ocorrencia();
 		ocorrencia.setEntrega(this);
 		ocorrencia.setDescricao(descricao);
 		ocorrencia.setDataRegistro(OffsetDateTime.now());
-		
+
 		getOcorrencias().add(ocorrencia);
-		
+
 		return ocorrencia;
+	}
+
+	public void finalizar() {
+		if (naoPodeSerFinalizada()) {
+			throw new NegocioException("Entrega não pode ser finalizada");
+		}
+
+		setStatus(StatusEntrega.FINALIZADA);
+		setDataFinalizacao(OffsetDateTime.now());
+	}
+
+	public boolean podeSerFinalizada() {
+		return StatusEntrega.PENDENTE.equals(getStatus());
+	}
+
+	public boolean naoPodeSerFinalizada() {
+		return !podeSerFinalizada();
 	}
 }
